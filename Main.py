@@ -169,7 +169,7 @@ except Exception as e:
         All_races.extend(list(season_races))
         # print("races found")
         # break
-    # All_races = np.array(All_races)
+    All_races = np.char.add("https://en.wikipedia.org", All_races)
     np.savetxt("race_wikilinks.csv", All_races, delimiter=",", fmt="%s")
 
 print(All_races)
