@@ -17,6 +17,7 @@ from bs4 import BeautifulSoup
 import numpy as np
 from numpy.typing import NDArray
 import re
+import os
 
 """ Function definitions """
 
@@ -145,33 +146,34 @@ def get_table_from_wiki_following_div(url: str, prev_div: str) -> NDArray:
     # raise ValueError(f"No table found with previous div '{prev_div}'")
 
 """ Code """
-F1_seasons_table: NDArray = get_table_from_wiki_captioned("https://en.wikipedia.org/wiki/List_of_Formula_One_World_Drivers%27_Champions", "World Drivers' Champions by season")
-# print(F1_seasons_table)
-F1_seasons = F1_seasons_table[:, 0, 1]
-# print(F1_seasons)
-
-
-
-"""NEED TO GO BY RESULTS AND STANDINGS INSTEAD"""
-
 All_races = []
-for season in F1_seasons:
-    # print("Trying to find table for season ", season)
-    season_table:NDArray = get_table_from_wiki_following_div("https://en.wikipedia.org" + season, "Grands Prix")
-    # print(season_table)
-    season_races = season_table[:, -1, 1]
-    # print(season_races)
-    All_races.append(list(season_races))
-    # print("races found")
-    # break
-# All_races = np.array(All_races)
+
+try:
+    All_races = np.loadtxt("race_wikilinks.csv", delimiter=",", dtype=str)
+
+except Exception as e:
+    print("wikilinks csv not found, caught error: ", e)
+    print("Getting wikilinks from wiki tree")
+
+    F1_seasons_table: NDArray = get_table_from_wiki_captioned("https://en.wikipedia.org/wiki/List_of_Formula_One_World_Drivers%27_Champions", "World Drivers' Champions by season")
+    # print(F1_seasons_table)
+    F1_seasons = F1_seasons_table[:, 0, 1]
+    # print(F1_seasons)
+
+    for season in F1_seasons:
+        # print("Trying to find table for season ", season)
+        season_table:NDArray = get_table_from_wiki_following_div("https://en.wikipedia.org" + season, "Grands Prix")
+        # print(season_table)
+        season_races = season_table[:, -1, 1]
+        # print(season_races)
+        All_races.extend(list(season_races))
+        # print("races found")
+        # break
+    # All_races = np.array(All_races)
+    np.savetxt("race_wikilinks.csv", All_races, delimiter=",", fmt="%s")
+
 print(All_races)
 
-# season94_table = get_table_from_wiki_following_div("https://en.wikipedia.org/wiki/1994_Formula_One_World_Championship", "Calendar")
-# print(season94_table)
-# season94_races = season94_table[:, 0, 1]
-# print(season94_races)
-# season95_table = get_table_from_wiki_following_div("https://en.wikipedia.org/wiki/1995_Formula_One_World_Championship", "Calendar")
-# print(season95_table)
-# season95_races = season95_table[:, 0, 1]
-# print(season95_races)
+# All_races = np.array(All_races)
+# All_races = All_races.T
+# print(All_races)
