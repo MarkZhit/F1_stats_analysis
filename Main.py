@@ -41,8 +41,9 @@ def get_table_from_wiki_captioned(url: str, table_caption: str) -> NDArray:
             cells = row.find_all("td")
             if (len(cells) < 16):
                 print("Row is < 16 cells")
-                print("url: " + url)
-                # print("row: " + row)
+                # print("url: " + url)
+                print("row: ")
+                print(row)
                 continue
             # print("Row is >= 16 cells")
             for cell in cells:
@@ -156,13 +157,14 @@ F1_seasons = F1_seasons_table[:, 0, 1]
 All_races = []
 for season in F1_seasons:
     # print("Trying to find table for season ", season)
-    season_table = get_table_from_wiki_following_div("https://en.wikipedia.org" + season, "Grands Prix")
+    season_table:NDArray = get_table_from_wiki_following_div("https://en.wikipedia.org" + season, "Grands Prix")
     # print(season_table)
     season_races = season_table[:, -1, 1]
     # print(season_races)
-    All_races.append(season_races)
+    All_races.append(list(season_races))
     # print("races found")
     # break
+# All_races = np.array(All_races)
 print(All_races)
 
 # season94_table = get_table_from_wiki_following_div("https://en.wikipedia.org/wiki/1994_Formula_One_World_Championship", "Calendar")
