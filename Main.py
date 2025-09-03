@@ -1,5 +1,4 @@
 """ Sources """
-from numpy.f2py.auxfuncs import throw_error
 
 # https://medium.com/pipeline-a-data-engineering-resource/how-i-used-python-to-scrape-100-tables-containing-5-years-of-f1-data-2e64125903c8
 # ^ explains concept for webscraping
@@ -15,11 +14,9 @@ from numpy.f2py.auxfuncs import throw_error
 """ imports """
 import requests
 from bs4 import BeautifulSoup
-# import pandas as pd
 import numpy as np
 from numpy.typing import NDArray
-import re
-import os
+import Race
 
 """ Function definitions """
 
@@ -185,6 +182,9 @@ except Exception as e:
 # each row  has the third element be a whole table
 # This table contains GP results
 # race results has rows of position, then columns are: driver name, constructor name, laps completed, final time/extra laps/retirement, points gained
+
+"""Use JSON storing rather than matrices"""
+
 
 All_qualis = []
 All_results = []
