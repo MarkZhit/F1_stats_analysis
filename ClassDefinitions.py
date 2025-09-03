@@ -54,13 +54,11 @@ class Results:
     positions: List[RacePosition]
 
 class Race:
-    def __init__(self, driver: Driver, url: str, circuit: str, date, quali, results):
-        self.driver = driver
+    def __init__(self, url: str, circuit: str, date, quali:Quali, results:Results):
         self.url = url
         self.circuit = circuit
         self.date = date
 
-    driver: Driver
     url: str
     circuit: str
     date: str
