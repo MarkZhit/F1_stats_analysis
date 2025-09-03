@@ -183,7 +183,7 @@ except Exception as e:
 # This table contains GP results
 # race results has rows of position, then columns are: driver name, constructor name, laps completed, final time/extra laps/retirement, points gained
 
-"""Use JSON storing rather than matrices"""
+"""Use class structure rather than matrices/lists to store this info"""
 
 
 All_qualis = []
