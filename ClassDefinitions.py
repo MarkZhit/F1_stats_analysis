@@ -1,4 +1,3 @@
-# from lib2to3.pgen2.driver import Driver
 from typing import List
 
 class Driver:
@@ -58,6 +57,8 @@ class Race:
         self.url = url
         self.circuit = circuit
         self.date = date
+        self.quali = quali
+        self.results = results
 
     url: str
     circuit: str

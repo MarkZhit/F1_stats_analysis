@@ -16,7 +16,9 @@ import requests
 from bs4 import BeautifulSoup
 import numpy as np
 from numpy.typing import NDArray
-import Race
+import json
+import requests
+import ClassDefinitions
 
 """ Function definitions """
 
@@ -81,7 +83,15 @@ def get_table_from_wiki_captioned(url: str, table_caption: str) -> NDArray:
 
 
 def get_table_from_wiki_following_div(url: str, prev_div_id: str, table_width=6) -> NDArray:
-    headers = {"User-Agent": "Mozilla/5.0"}  # looks like a browser
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    }
+    print(url)
+    session = requests.Session()
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -153,6 +163,7 @@ All_races = []
 
 try:
     All_races = np.loadtxt("race_wikilinks.csv", delimiter=",", dtype=str)
+    # have to create json interpreter
 
 except Exception as e:
     print("wikilinks csv not found, caught error: ", e)
@@ -161,19 +172,29 @@ except Exception as e:
     F1_seasons_table: NDArray = get_table_from_wiki_captioned("https://en.wikipedia.org/wiki/List_of_Formula_One_World_Drivers%27_Champions", "World Drivers' Champions by season")
     # print(F1_seasons_table)
     F1_seasons = F1_seasons_table[:, 0, 1]
-    # print(F1_seasons)
+    print(F1_seasons)
+
 
     for season in F1_seasons:
         # print("Trying to find table for season ", season)
         season_table:NDArray = get_table_from_wiki_following_div("https://en.wikipedia.org" + season, "Grands_Prix", 6)
         # print(season_table)
-        season_races = season_table[:, -1, 1]
+        season_races = np.char.add("https://en.wikipedia.org", season_table[:, -1, 1])
         # print(season_races)
-        All_races.extend(list(season_races))
+        All_races.append(list(season_races))
         # print("races found")
         # break
-    All_races = np.char.add("https://en.wikipedia.org", All_races)
-    np.savetxt("race_wikilinks.csv", All_races, delimiter=",", fmt="%s")
+    # np.savetxt("race_wikilinks.csv", All_races, delimiter=",", fmt="%s")
+
+        with open("race_wikilinks.json", "r") as f:
+            All_races = json.load(f)  # list of lists
+        for race_link in season_races:
+            try:
+                response = requests.get(race_link)
+                response.raise_for_status()
+                # parse response.text here
+            except Exception as e:
+                print(f"Got exception: {e} for race link: {race_link}")
 
 # I want these properties:
 # each row  has the second element be a whole table
@@ -186,8 +207,9 @@ except Exception as e:
 """Use class structure rather than matrices/lists to store this info"""
 
 
-All_qualis = []
-All_results = []
+# All_qualis = []
+# All_results = []
+
 
 for race in All_races:
     try:
@@ -196,12 +218,12 @@ for race in All_races:
         #1950s have two drivers for one car ig, have to figure out how to deal with that. maybe combine them into one person?
         quali_table = get_table_from_wiki_following_div(race, "Qualifying", 4)
         results_table = get_table_from_wiki_following_div(race, "Race",7)
-        All_qualis.append(quali_table)
-        All_results.append(results_table)
+        # All_qualis.append(quali_table)
+        # All_results.append(results_table)
     except Exception as e:
         print("Got exception: ", e, "for race link: ", race)
 
 
-All_info = np.hstack([All_races, All_qualis, All_results])  # shape (N, 3)
+# All_info = np.hstack([All_races, All_qualis, All_results])  # shape (N, 3)
 
 # print(All_races)
