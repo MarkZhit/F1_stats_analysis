@@ -1,4 +1,6 @@
 """ Sources """
+from numpy.f2py.auxfuncs import throw_error
+
 # https://medium.com/pipeline-a-data-engineering-resource/how-i-used-python-to-scrape-100-tables-containing-5-years-of-f1-data-2e64125903c8
 # ^ explains concept for webscraping
 
@@ -81,15 +83,21 @@ def get_table_from_wiki_captioned(url: str, table_caption: str) -> NDArray:
     raise ValueError(f"No table found with caption '{table_caption}'")
 
 
-def get_table_from_wiki_following_div(url: str, prev_div: str) -> NDArray:
+def get_table_from_wiki_following_div(url: str, prev_div_id: str, table_width=6) -> NDArray:
     headers = {"User-Agent": "Mozilla/5.0"}  # looks like a browser
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "html.parser")
 
     # Find the div containing the text prev_div
-    div = soup.find("h3", string=prev_div)
-    table = div.find_next("table")
+    # try:
+    div = soup.find(id=prev_div_id)
+    # print("prev div id: ", prev_div_id, ", div: ", div)
+    table = div.parent.find_next_sibling("table")  # get the table after that div
+    # table = div.find_next("table")
+    # except Exception as e:
+    #     print("Got error: ", e)
+    #     raise e
 
     all_rows = table.tbody.find_all("tr")
 
@@ -105,11 +113,9 @@ def get_table_from_wiki_following_div(url: str, prev_div: str) -> NDArray:
         cells = row.find_all("td")
 
         # print(len(cells))
-        if (len(cells) < 6):
-            print("Row is < 6 cells")
-            print("url: " + url)
-            # print("row: " + row)
-            # print(rows.index(row))
+        if (len(cells) < table_width):
+            print("Row is < " + str(table_width) + " cells for prev_div_id: " + prev_div_id + ", and url: " + url)
+            print(cells)
             continue
 
         # print("Row is >= 16 cells")
@@ -162,7 +168,7 @@ except Exception as e:
 
     for season in F1_seasons:
         # print("Trying to find table for season ", season)
-        season_table:NDArray = get_table_from_wiki_following_div("https://en.wikipedia.org" + season, "Grands Prix")
+        season_table:NDArray = get_table_from_wiki_following_div("https://en.wikipedia.org" + season, "Grands_Prix", 6)
         # print(season_table)
         season_races = season_table[:, -1, 1]
         # print(season_races)
@@ -172,8 +178,30 @@ except Exception as e:
     All_races = np.char.add("https://en.wikipedia.org", All_races)
     np.savetxt("race_wikilinks.csv", All_races, delimiter=",", fmt="%s")
 
-print(All_races)
+# I want these properties:
+# each row  has the second element be a whole table
+# This table contains qualifying results
+# quali results has rows of position, then columns are: driver name, constructor name, Q1, Q2, Q3, quali position
+# each row  has the third element be a whole table
+# This table contains GP results
+# race results has rows of position, then columns are: driver name, constructor name, laps completed, final time/extra laps/retirement, points gained
 
-# All_races = np.array(All_races)
-# All_races = All_races.T
+All_qualis = []
+All_results = []
+
+for race in All_races:
+    try:
+        #1950 british gp seems to be different, it uses Race_Classification and Qualifying_Classification isntead
+        #1950 indianapolis500 has a box score instead
+        #1950s have two drivers for one car ig, have to figure out how to deal with that. maybe combine them into one person?
+        quali_table = get_table_from_wiki_following_div(race, "Qualifying", 4)
+        results_table = get_table_from_wiki_following_div(race, "Race",7)
+        All_qualis.append(quali_table)
+        All_results.append(results_table)
+    except Exception as e:
+        print("Got exception: ", e, "for race link: ", race)
+
+
+All_info = np.hstack([All_races, All_qualis, All_results])  # shape (N, 3)
+
 # print(All_races)
