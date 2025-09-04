@@ -12,13 +12,14 @@
 
 
 """ imports """
-import requests
+from typing import List
 from bs4 import BeautifulSoup
 import numpy as np
 from numpy.typing import NDArray
 import json
 import requests
 import ClassDefinitions
+from ClassDefinitions import Season
 
 """ Function definitions """
 
@@ -158,43 +159,58 @@ def get_table_from_wiki_following_div(url: str, prev_div_id: str, table_width=6)
 
     # raise ValueError(f"No table found with previous div '{prev_div}'")
 
+def get_race_from_link(url: str):
+    # stub, need to get info from the wiki page ofc
+    return ClassDefinitions.Race(url, "circuit", "date", None, None)
+
+
+def get_races_from_links(urls: List[str]):
+    races: List[ClassDefinitions.Race] = []
+    for url in urls:
+        races.append(get_race_from_link(url))
+
+    return races
+
+
 """ Code """
-All_races = []
+# All_races = []
+All_seasons: List[ClassDefinitions.Season] = []
 
 try:
-    All_races = np.loadtxt("race_wikilinks.csv", delimiter=",", dtype=str)
+    All_seasons = np.loadtxt("race_wikilinks.json", delimiter=",", dtype=str)
     # have to create json interpreter
 
 except Exception as e:
-    print("wikilinks csv not found, caught error: ", e)
+    print("wikilinks json not found, caught error: ", e)
     print("Getting wikilinks from wiki tree")
 
     F1_seasons_table: NDArray = get_table_from_wiki_captioned("https://en.wikipedia.org/wiki/List_of_Formula_One_World_Drivers%27_Champions", "World Drivers' Champions by season")
     # print(F1_seasons_table)
-    F1_seasons = F1_seasons_table[:, 0, 1]
-    print(F1_seasons)
+    F1_season_names = F1_seasons_table[:, 0, 1]
+    print(F1_season_names)
 
 
-    for season in F1_seasons:
+    for season_name in F1_season_names:
         # print("Trying to find table for season ", season)
-        season_table:NDArray = get_table_from_wiki_following_div("https://en.wikipedia.org" + season, "Grands_Prix", 6)
+        season_table:NDArray = get_table_from_wiki_following_div("https://en.wikipedia.org" + season_name, "Grands_Prix", 6)
         # print(season_table)
         season_races = np.char.add("https://en.wikipedia.org", season_table[:, -1, 1])
         # print(season_races)
-        All_races.append(list(season_races))
+        season: Season = Season(season_name, get_races_from_links(season_races))
+        # All_races.append(list(season_races))
         # print("races found")
         # break
     # np.savetxt("race_wikilinks.csv", All_races, delimiter=",", fmt="%s")
 
-        with open("race_wikilinks.json", "r") as f:
-            All_races = json.load(f)  # list of lists
-        for race_link in season_races:
-            try:
-                response = requests.get(race_link)
-                response.raise_for_status()
-                # parse response.text here
-            except Exception as e:
-                print(f"Got exception: {e} for race link: {race_link}")
+    # with open("race_wikilinks.json", "r") as f:
+    #     All_races = json.load(f)  # list of lists
+    # for race_link in season_races:
+    #     try:
+    #         response = requests.get(race_link)
+    #         response.raise_for_status()
+    #         # parse response.text here
+    #     except Exception as e:
+    #         print(f"Got exception: {e} for race link: {race_link}")
 
 # I want these properties:
 # each row  has the second element be a whole table
@@ -205,23 +221,24 @@ except Exception as e:
 # race results has rows of position, then columns are: driver name, constructor name, laps completed, final time/extra laps/retirement, points gained
 
 """Use class structure rather than matrices/lists to store this info"""
-
+"""Reorganize with a list of seasons, so it's not one flat list"""
 
 # All_qualis = []
 # All_results = []
 
 
-for race in All_races:
-    try:
-        #1950 british gp seems to be different, it uses Race_Classification and Qualifying_Classification isntead
-        #1950 indianapolis500 has a box score instead
-        #1950s have two drivers for one car ig, have to figure out how to deal with that. maybe combine them into one person?
-        quali_table = get_table_from_wiki_following_div(race, "Qualifying", 4)
-        results_table = get_table_from_wiki_following_div(race, "Race",7)
-        # All_qualis.append(quali_table)
-        # All_results.append(results_table)
-    except Exception as e:
-        print("Got exception: ", e, "for race link: ", race)
+# for season in All_seasons:
+#     try:
+#         #1950 british gp seems to be different, it uses Race_Classification and Qualifying_Classification isntead
+#         #1950 indianapolis500 has a box score instead
+#         #1950s have two drivers for one car ig, have to figure out how to deal with that. maybe combine them into one person?
+#         # quali_table = get_table_from_wiki_following_div(race, "Qualifying", 4)
+#         # results_table = get_table_from_wiki_following_div(race, "Race",7)
+#         # All_qualis.append(quali_table)
+#         # All_results.append(results_table)
+#
+#     except Exception as e:
+#         print("Got exception: ", e, "for race link: ", season.url)
 
 
 # All_info = np.hstack([All_races, All_qualis, All_results])  # shape (N, 3)

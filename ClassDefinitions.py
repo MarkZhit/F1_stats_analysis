@@ -67,9 +67,9 @@ class Race:
     results: Results
 
 class Season:
-    def __init__(self, name: str, races: List[Race]):
-        self.name = name
+    def __init__(self, url: str, races: List[Race]):
+        self.url = url
         self.races = races
 
-    year: int
+    url: str
     races: List[Race]
