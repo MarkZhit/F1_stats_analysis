@@ -24,14 +24,14 @@ class Position:
 
 class QualiPosition(Position):
     def __init__(self, driver: Driver, constructor: Constructor, time: str, grid_position: int):
-        super().__init__(self, driver, constructor, time)
+        super().__init__(driver, constructor, time)
         self.grid_position = grid_position
 
     grid_position: int
 
 class RacePosition(Position):
     def __init__(self, driver:Driver, constructor: Constructor, laps: int, time: str, points: int):
-        super().__init__(self, driver, constructor, time)
+        super().__init__(driver, constructor, time)
         self.laps = laps
         self.points = points
 

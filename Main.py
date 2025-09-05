@@ -19,8 +19,15 @@ import numpy as np
 from numpy.typing import NDArray
 import json
 import requests
-import ClassDefinitions
 from ClassDefinitions import Season
+from ClassDefinitions import Driver
+from ClassDefinitions import Quali
+from ClassDefinitions import QualiPosition
+from ClassDefinitions import Constructor
+from ClassDefinitions import Race
+from ClassDefinitions import Results
+from ClassDefinitions import RacePosition
+
 
 """ Function definitions """
 
@@ -92,7 +99,7 @@ def get_table_from_wiki_following_div(url: str, prev_div_id: str, table_width=6)
         "Accept-Language": "en-US,en;q=0.9",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     }
-    print(url)
+    # print(url)
     session = requests.Session()
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
@@ -102,7 +109,11 @@ def get_table_from_wiki_following_div(url: str, prev_div_id: str, table_width=6)
     # try:
     div = soup.find(id=prev_div_id)
     # print("prev div id: ", prev_div_id, ", div: ", div)
-    table = div.parent.find_next_sibling("table")  # get the table after that div
+    try:
+        table = div.parent.find_next_sibling("table")  # get the table after that div
+    except Exception as e:
+        print("getting table got an exception: ", e)
+        raise e
     # table = div.find_next("table")
     # except Exception as e:
     #     print("Got error: ", e)
@@ -161,23 +172,35 @@ def get_table_from_wiki_following_div(url: str, prev_div_id: str, table_width=6)
     # raise ValueError(f"No table found with previous div '{prev_div}'")
 def get_quali_from_link(url: str):
     # TODO get the whole table, each row becomes one QualiPosition
-    qualiTable:NDArray = get_table_from_wiki_following_div(url, )
+    qualiTable:NDArray = get_table_from_wiki_following_div(url,"Qualifying", 4)
+    # print(qualiTable)
     # TODO properly create instances of QualiPosition from the row
-    return ClassDefinitions.Quali([]) # stub
+    qualiList:List[QualiPosition] = []
+    for row in qualiTable:
+        qualiPosition = QualiPosition(Driver("driver"), Constructor("constructor"), "time", 0)
+        qualiList.append(qualiPosition)
+    return Quali(qualiList)
+    # return ClassDefinitions.Quali([]) # stub
 
 def get_results_from_link(url: str):
     # TODO get the whole table, each row becomes one RacePosition
+    raceTable:NDArray = get_table_from_wiki_following_div(url,"Race", 7)
+    # print(raceTable)
     # TODO properly create instances of RacePosition from the row
-    return ClassDefinitions.Results([]) # stub
+    raceList:List[RacePosition] = []
+    for row in raceTable:
+        racePosition = RacePosition(Driver("driver"), Constructor("constructor"), 0, "time", 0)
+        raceList.append(racePosition)
+    return Results(raceList)
+    # return Results([]) # stub
 
 def get_race_from_link(url: str):
-    # stub, TODO get info from the wiki page ofc
-    return ClassDefinitions.Race(url, "circuit", "date",
+    return Race(url, "circuit", "date",
                                  get_quali_from_link(url), get_results_from_link(url))
 
 
 def get_races_from_links(urls: List[str]):
-    races: List[ClassDefinitions.Race] = []
+    races: List[Race] = []
     for url in urls:
         races.append(get_race_from_link(url))
 
@@ -188,8 +211,10 @@ def get_F1_season_urls(url:str, table_caption: str):
     return F1_seasons_table[:, 0, 1]
 
 def get_F1_season(url: str, prev_div_id:str, table_width:int):
-    season_table:NDArray = get_table_from_wiki_following_div("https://en.wikipedia.org" + season_link, "Grands_Prix", 6)
-    season_races = np.char.add("https://en.wikipedia.org", season_table[:, -1, 1])
+    season_table:NDArray = get_table_from_wiki_following_div(url, prev_div_id, table_width)
+    # season_race_links = season_table[:, -1, 1]
+    season_race_links = [row[-1][1] for row in season_table]
+    season_races = np.char.add("https://en.wikipedia.org", season_race_links)
     return Season(season_link, get_races_from_links(season_races))
 
 
@@ -198,7 +223,7 @@ def json_to_Seasons_List(jsonArray: NDArray):
     return []
 
 """ 'Main' """
-All_seasons: List[ClassDefinitions.Season] = []
+All_seasons: List[Season] = []
 
 
 
@@ -210,7 +235,7 @@ else:
     print("Getting wikilinks from wiki tree")
 
     F1_season_names: NDArray = get_F1_season_urls("https://en.wikipedia.org/wiki/List_of_Formula_One_World_Drivers%27_Champions", "World Drivers' Champions by season")
-    print(F1_season_names)
+    # print(F1_season_names)
 
 
     for season_link in F1_season_names:
