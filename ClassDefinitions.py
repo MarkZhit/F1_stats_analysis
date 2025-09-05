@@ -29,7 +29,7 @@ class QualiPosition(Position):
 
     grid_position: int
 
-class RacePosition:
+class RacePosition(Position):
     def __init__(self, driver:Driver, constructor: Constructor, laps: int, time: str, points: int):
         super().__init__(self, driver, constructor, time)
         self.laps = laps
