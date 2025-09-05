@@ -1,4 +1,5 @@
 """ Sources """
+import os
 
 # https://medium.com/pipeline-a-data-engineering-resource/how-i-used-python-to-scrape-100-tables-containing-5-years-of-f1-data-2e64125903c8
 # ^ explains concept for webscraping
@@ -159,17 +160,18 @@ def get_table_from_wiki_following_div(url: str, prev_div_id: str, table_width=6)
 
     # raise ValueError(f"No table found with previous div '{prev_div}'")
 def get_quali_from_link(url: str):
-    # need to get the whole table, each row becomes one QualiPosition
-    # need to properly create instances of QualiPosition from the row
+    # TODO get the whole table, each row becomes one QualiPosition
+    qualiTable:NDArray = get_table_from_wiki_following_div(url, )
+    # TODO properly create instances of QualiPosition from the row
     return ClassDefinitions.Quali([]) # stub
 
 def get_results_from_link(url: str):
-    # need to get the whole table, each row becomes one RacePosition
-    # need to properly create instances of RacePosition from the row
+    # TODO get the whole table, each row becomes one RacePosition
+    # TODO properly create instances of RacePosition from the row
     return ClassDefinitions.Results([]) # stub
 
 def get_race_from_link(url: str):
-    # stub, need to get info from the wiki page ofc
+    # stub, TODO get info from the wiki page ofc
     return ClassDefinitions.Race(url, "circuit", "date",
                                  get_quali_from_link(url), get_results_from_link(url))
 
@@ -181,33 +183,39 @@ def get_races_from_links(urls: List[str]):
 
     return races
 
-def get_F1_seasons(url:str, table_caption: str):
+def get_F1_season_urls(url:str, table_caption: str):
     F1_seasons_table: NDArray = get_table_from_wiki_captioned(url, table_caption)
     return F1_seasons_table[:, 0, 1]
 
-""" Code """
-# All_races = []
+def get_F1_season(url: str, prev_div_id:str, table_width:int):
+    season_table:NDArray = get_table_from_wiki_following_div("https://en.wikipedia.org" + season_link, "Grands_Prix", 6)
+    season_races = np.char.add("https://en.wikipedia.org", season_table[:, -1, 1])
+    return Season(season_link, get_races_from_links(season_races))
+
+
+def json_to_Seasons_List(jsonArray: NDArray):
+    # TODO interpret the np.loadtxt result
+    return []
+
+""" 'Main' """
 All_seasons: List[ClassDefinitions.Season] = []
 
-try:
-    All_seasons = np.loadtxt("race_wikilinks.json", delimiter=",", dtype=str)
+
+
+if os.path.exists("race_wikilinks.json"):
+    All_seasons = json_to_Seasons_List(np.loadtxt("race_wikilinks.json", delimiter=",", dtype=str))
     # have to create json interpreter
 
-except Exception as e:
-    print("wikilinks json not found, caught error: ", e)
+else:
     print("Getting wikilinks from wiki tree")
 
-    F1_season_names: NDArray = get_F1_seasons("https://en.wikipedia.org/wiki/List_of_Formula_One_World_Drivers%27_Champions", "World Drivers' Champions by season")
+    F1_season_names: NDArray = get_F1_season_urls("https://en.wikipedia.org/wiki/List_of_Formula_One_World_Drivers%27_Champions", "World Drivers' Champions by season")
     print(F1_season_names)
 
 
     for season_link in F1_season_names:
+        season = get_F1_season("https://en.wikipedia.org" + season_link, "Grands_Prix", 6)
         # print("Trying to find table for season ", season)
-        season_table:NDArray = get_table_from_wiki_following_div("https://en.wikipedia.org" + season_link, "Grands_Prix", 6)
-        # print(season_table)
-        season_races = np.char.add("https://en.wikipedia.org", season_table[:, -1, 1])
-        # print(season_races)
-        season: Season = Season(season_link, get_races_from_links(season_races))
         All_seasons.append(season)
 
     """write to json"""
