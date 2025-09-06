@@ -20,13 +20,6 @@ from numpy.typing import NDArray
 import json
 import requests
 from ClassDefinitions import Season
-from ClassDefinitions import Driver
-from ClassDefinitions import Quali
-from ClassDefinitions import QualiPosition
-from ClassDefinitions import Constructor
-from ClassDefinitions import Race
-from ClassDefinitions import Results
-from ClassDefinitions import RacePosition
 
 
 """ Function definitions """
@@ -47,16 +40,17 @@ def get_table_from_wiki_captioned(url: str, table_caption: str) -> NDArray:
 
         # extract text for each cell
         dataTable = []
-        for row in rows:
+        for i, row in enumerate(rows):
             dataRow = []
             cells = row.find_all("td")
             if (len(cells) < 16):
-                print("Row is < 16 cells")
-                # print("url: " + url)
-                print("row: ")
-                print(row)
-                continue
-            # print("Row is >= 16 cells")
+                # print("Row is < 16 cells, i=",str(i)," url is: ", url)
+                # figured out how to handle it
+                currCells = cells
+                cells = rows[i - 1].find_all("td")
+                cells[3] = currCells[0]
+                cells[4] = currCells[1]
+                cells[5] = currCells[2]
             for cell in cells:
                 # Try direct child <a> first
                 a_tag = cell.find("a", recursive=False)  # td > a
@@ -74,153 +68,28 @@ def get_table_from_wiki_captioned(url: str, table_caption: str) -> NDArray:
                     href = None
 
                 dataRow.append([text, href])
+            dataTable.append(dataRow)
 
-
-                # dataRow.append([cell])
-            if (len(dataRow) > 0):
-                dataTable.append(dataRow)
-                # print(len(dataRow))
-
-                # Stub to get only one row
-                # return dataTable
-
-        # convert to NumPy array
-        # table_body = np.array(data)
         return np.array(dataTable)
 
     raise ValueError(f"No table found with caption '{table_caption}'")
 
 
-def get_table_from_wiki_following_div(url: str, prev_div_id: str, table_width=6) -> NDArray:
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    }
-    # print(url)
-    session = requests.Session()
-    resp = requests.get(url, headers=headers)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "html.parser")
-
-    # Find the div containing the text prev_div
-    # try:
-    div = soup.find(id=prev_div_id)
-    # print("prev div id: ", prev_div_id, ", div: ", div)
-    try:
-        table = div.parent.find_next_sibling("table")  # get the table after that div
-    except Exception as e:
-        print("getting table got an exception: ", e)
-        raise e
-    # table = div.find_next("table")
-    # except Exception as e:
-    #     print("Got error: ", e)
-    #     raise e
-
-    all_rows = table.tbody.find_all("tr")
-
-    rows = [r for r in all_rows if r.td]
-
-    # extract text for each cell
-    dataTable = []
-    for row in rows:
-        if (row.get("class") and "sortbottom" in row.get("class")):
-            continue
-
-        dataRow = []
-        cells = row.find_all("td")
-
-        # print(len(cells))
-        if (len(cells) < table_width):
-            print("Row is < " + str(table_width) + " cells for prev_div_id: " + prev_div_id + ", and url: " + url)
-            print(cells)
-            continue
-
-        # print("Row is >= 16 cells")
-        for cell in cells:
-            # Try direct child <a> first
-            a_tag = cell.find("a", recursive=False)  # td > a
-            if a_tag is None:
-                # fallback: look for <a> inside a span
-                span = cell.find("span")
-                if span:
-                    a_tag = span.find("a")
-
-            if a_tag:
-                text = a_tag.get_text(strip=True)
-                href = a_tag.get("href")
-            else:
-                text = cell.get_text(strip=True)
-                href = None
-
-            dataRow.append([text, href])
-
-        # print(len(dataRow))
-
-            # dataRow.append([cell])
-        if (len(dataRow) > 0):
-            dataTable.append(dataRow)
-            # print(len(dataRow))
-
-            # Stub to get only one row
-            # return dataTable
-
-    return np.array(dataTable)
 
     # raise ValueError(f"No table found with previous div '{prev_div}'")
-def get_quali_from_link(url: str):
-    # TODO get the whole table, each row becomes one QualiPosition
-    qualiTable:NDArray = get_table_from_wiki_following_div(url,"Qualifying", 4)
-    # print(qualiTable)
-    # TODO properly create instances of QualiPosition from the row
-    qualiList:List[QualiPosition] = []
-    for row in qualiTable:
-        qualiPosition = QualiPosition(Driver("driver"), Constructor("constructor"), "time", 0)
-        qualiList.append(qualiPosition)
-    return Quali(qualiList)
-    # return ClassDefinitions.Quali([]) # stub
 
-def get_results_from_link(url: str):
-    # TODO get the whole table, each row becomes one RacePosition
-    raceTable:NDArray = get_table_from_wiki_following_div(url,"Race", 7)
-    # print(raceTable)
-    # TODO properly create instances of RacePosition from the row
-    raceList:List[RacePosition] = []
-    for row in raceTable:
-        racePosition = RacePosition(Driver("driver"), Constructor("constructor"), 0, "time", 0)
-        raceList.append(racePosition)
-    return Results(raceList)
     # return Results([]) # stub
 
-def get_race_from_link(url: str):
-    return Race(url, "circuit", "date",
-                                 get_quali_from_link(url), get_results_from_link(url))
 
 
-def get_races_from_links(urls: List[str]):
-    races: List[Race] = []
-    for url in urls:
-        races.append(get_race_from_link(url))
-
-    return races
 
 def get_F1_season_urls(url:str, table_caption: str):
     F1_seasons_table: NDArray = get_table_from_wiki_captioned(url, table_caption)
     return F1_seasons_table[:, 0, 1]
 
-def get_F1_season(url: str, prev_div_id:str, table_width:int):
-    season_table:NDArray = get_table_from_wiki_following_div(url, prev_div_id, table_width)
-    # season_race_links = season_table[:, -1, 1]
-    season_race_links = [row[-1][1] for row in season_table]
-    season_races = np.char.add("https://en.wikipedia.org", season_race_links)
-    return Season(season_link, get_races_from_links(season_races))
-
-
 def json_to_Seasons_List(jsonArray: NDArray):
     # TODO interpret the np.loadtxt result
-    return []
+    return
 
 """ 'Main' """
 All_seasons: List[Season] = []
@@ -239,7 +108,7 @@ else:
 
 
     for season_link in F1_season_names:
-        season = get_F1_season("https://en.wikipedia.org" + season_link, "Grands_Prix", 6)
+        season:Season = Season.get_F1_season("https://en.wikipedia.org" + season_link, "Grands_Prix")
         # print("Trying to find table for season ", season)
         All_seasons.append(season)
 
