@@ -7,12 +7,17 @@ import requests
 from bs4 import BeautifulSoup
 
 class Driver:
+
+    # TODO: if an instance of driver already exists that has the same name, reuse it
+    # idk how to do that tho
     def __init__(self, name: str):
         self.name = name
 
     name: str
 
 class Constructor:
+    # TODO: if an instance of constructor already exists that has the same name, reuse it
+    # idk how to do that tho
     def __init__(self, name: str):
         self.name = name
 
@@ -196,13 +201,13 @@ class Quali:
         return returnVal
 
     def get_quali_from_link(url: str):
-        # TODO get the whole table, each row becomes one QualiPosition
         qualiTable: NDArray = Quali.get_table_from_wiki_following_div(url, "Qualifying")
         # print(qualiTable)
         # TODO properly create instances of QualiPosition from the row
         qualiList: List[QualiPosition] = []
-        for row in qualiTable:
-            qualiPosition = QualiPosition(Driver("driver"), Constructor("constructor"), "time", 0)
+        for i,row in enumerate(qualiTable):
+            qualiPosition = QualiPosition(Driver(row[1][0]), Constructor(row[2][0]), row[3][0], i)
+            # TODO: need to get time or times depending on how many rounds of quali, if there even is one
             qualiList.append(qualiPosition)
         return Quali(qualiList)
         # return ClassDefinitions.Quali([]) # stub
@@ -307,8 +312,8 @@ class Results:
         # print(raceTable)
         # TODO properly create instances of RacePosition from the row
         raceList: List[RacePosition] = []
-        for row in raceTable:
-            racePosition = RacePosition(Driver("driver"), Constructor("constructor"), 0, "time", 0)
+        for i,row in enumerate(raceTable):
+            racePosition = RacePosition(Driver(row[1][0]), Constructor(row[2][0]), row[3][0], row[4][0], row[6][0])
             raceList.append(racePosition)
         return Results(raceList)
 
