@@ -1,5 +1,7 @@
+import copy
 from typing import List
 import numpy as np
+from numpy.f2py.crackfortran import previous_context
 from numpy.typing import NDArray
 import requests
 from bs4 import BeautifulSoup
@@ -64,61 +66,92 @@ class Quali:
         soup = BeautifulSoup(resp.text, "html.parser")
 
         # Find the div containing the text prev_div
-        # try:
-        if ("Indianapolis" in url):
-            prev_div_id = "Box_score"
+        if ("1953_French" in url):
+            prev_div_id = "Qualifying_classification"
+        elif ("1950_Indianapolis" in url):
+            prev_div_id = prev_div_id
+        elif ("1957_Indianapolis" in url):
+            prev_div_id = "Grid"
+        elif ("Indianapolis" in url):
+            prev_div_id = "Starting_grid"
 
         div = soup.find(id=prev_div_id)
         # print("prev div id: ", prev_div_id, ", div: ", div)
         try:
             table = div.parent.find_next_sibling("table")  # get the table after that div
         except Exception as e:
-            # TODO: still getting ragged table
-            print("getting table (quali) got an exception: ", e, "url: ", url)
+            print("Table doesn't exist after div, e: ", e, "url: ", url)
             raise e
         # table = div.find_next("table")
         # except Exception as e:
         #     print("Got error: ", e)
         #     raise e
 
-        all_rows = table.tbody.find_all("tr")
+        rows = table.tbody.find_all("tr")
 
-        rows = [r for r in all_rows if r.td]
+
+        # rows = [r for r in all_rows if r.td]
+        # rows = all_rows
+        maxWidth = -1
+        headerHeight = 1
+        headerRow = rows[0]
+        header_cells = [cell for cell in headerRow if cell.name is not None]
+        for i, th in enumerate(header_cells):
+
+
+
+            if ("Gap" in th.name):
+                continue
+
+            if th.has_attr("colspan"):
+                maxWidth += int(th["colspan"])
+            else:
+                maxWidth += 1
+
+            if th.has_attr("rowspan"):
+                headerHeight = max(int(th["rowspan"]), headerHeight)
+
+
+
+        # remove the header and footer
+        rows = rows[headerHeight:-1]
+        # rows = rows[:-1]
 
         # extract text for each cell
         dataTable = []
         for i, row in enumerate(rows):
-            if (row.get("class") and "sortbottom" in row.get("class")):
-                continue
+            # row = [cell for cell in row if cell.name is not None]
+            # if (row.get("class") and "sortbottom" in row.get("class")):
+            #     continue
 
             dataRow = []
             cells = row.find_all("td")
 
-            # print(len(cells))
-            maxWidth = 0
+            if (len(cells) > maxWidth):
+                print("more cells than useful columns, len(cells): ", len(cells), "maxWidth: ", maxWidth)
+                cells = cells[:maxWidth]
 
-            headerRow = table.thead.find_all("tr")[0].find_all("th")
-            for i,th in enumerate(headerRow):
-                if th.has_attr("colspan"):
-                    maxWidth += int(th["colspan"])
-                else:
-                    maxWidth += 1
+            # print(len(cells))
+
 
 
             if (len(cells) < maxWidth):
                 # if row is short
-                currCells = cells
-                cells = rows[i - 1].find_all("td")
+                cells = copy.deepcopy(cells)
+                prevCells = rows[i - 1].find_all("td")
                 # find the previous row
-                for j, cell in enumerate(cells):
+                newRow = copy.deepcopy(row)
+                for j, cell in enumerate(prevCells):
                     if cell.has_attr("rowspan"):
                         # find every element with rowspan
                         rowspan = int(cell["rowspan"])
-                        newCell = cell
+                        newCell = copy.deepcopy(cell)
                         newCell["rowspan"] = rowspan - 1
-                        currCells.insert(j,newCell)
-                        cells = currCells
-
+                        cells.insert(j,newCell)
+                        newRow.insert(2*j+2,'\n')
+                        newRow.insert(2*j+3,newCell)
+                # cells = copy.deepcopy(cells) # necessary?
+                rows[i] = newRow
 
                 # cells[1] = currCells[0]
 
@@ -144,7 +177,7 @@ class Quali:
 
                 dataRow.append([text, href])
             if (len(dataTable) and len(dataRow) < len(dataTable[-1])):
-                print("prev row was longer (quali) j= ", j, "url: ", url)
+                print("prev row was longer (quali) i= ", i, "url: ", url)
 
             # print(len(dataRow))
 
@@ -158,6 +191,8 @@ class Quali:
             dataTable.append(dataRow)
 
         returnVal = np.array(dataTable)
+        print("Quali   table created for url:", url)
+        # print(returnVal)
         return returnVal
 
     def get_quali_from_link(url: str):
@@ -263,6 +298,7 @@ class Results:
         # Stub to get only one row
         # return dataTable
         returnVal = np.array(dataTable)
+        print("Results table created for url:", url)
         return returnVal
 
     def get_results_from_link(url: str):
@@ -277,14 +313,16 @@ class Results:
         return Results(raceList)
 
 class Race:
-    def __init__(self, url: str, circuit: str, date, quali:Quali, results:Results):
+    def __init__(self, url: str, year: int, circuit: str, date, quali:Quali, results:Results):
         self.url = url
+        self.year = year
         self.circuit = circuit
         self.date = date
         self.quali = quali
         self.results = results
 
     url: str
+    year: int
     circuit: str
     date: str
     quali: Quali
@@ -316,8 +354,6 @@ class Season:
 
         # Find the div containing the text prev_div
         # try:
-        if ("Indianapolis" in url):
-            prev_div_id = "Box_score"
 
         div = soup.find(id=prev_div_id)
         # print("prev div id: ", prev_div_id, ", div: ", div)
@@ -388,7 +424,7 @@ class Season:
         return returnVal
 
     def get_race_from_link(url: str):
-        return Race(url, "circuit", "date",
+        return Race(url,0,  "circuit", "date",
                     Quali.get_quali_from_link(url), Results.get_results_from_link(url))
 
     def get_races_from_links(urls: List[str]):
