@@ -48,8 +48,9 @@ class Position:
     time:str
 
 class QualiPosition(Position):
-    def __init__(self, driver: Driver, constructor: Constructor, time: str, grid_position: int):
-        super().__init__(driver, constructor, time)
+    def __init__(self, driver: Driver, constructor: Constructor, grid_position: int, times: List[str]):
+        super().__init__(driver, constructor, max(times))
+        # max prolly doesn't work on strings, prolly need to define another method for this
         self.grid_position = grid_position
 
     grid_position: int
@@ -175,32 +176,41 @@ class Quali:
                 rows[i] = newRow
 
             # print("Row is >= 16 cells")
+            racerName = ""
+            racerURL = ""
+            constructorName = ""
+            constructorURL = ""
+            gridPosition = i
+            times = []
             for j, cell in enumerate(cells):
                 # Try direct child <a> first
-                # match j:
-                #     case 0:
-                #         # racing number
-                #     case 1:
-                #         # racer name
-                #     case 2:
-                #         # constructor name
-                #     case _:
-                #         # else
-                a_tag = cell.find("a", recursive=False)  # td > a
-                if a_tag is None:
-                    # fallback: look for <a> inside a span
-                    span = cell.find("span")
-                    if span:
-                        a_tag = span.find("a")
+                match j:
+                    case 1:
+                        # racer name
+                        racerName = cell.text
+                        racerURL = cell.href
+                    case 2:
+                        # constructor name
+                        racerName = cell.text
+                        constructorURL = cell.href
+                    case _:
+                        # else, record for fun
+                        times.append(cell.text)
+                # a_tag = cell.find("a", recursive=False)  # td > a
+                # if a_tag is None:
+                #     # fallback: look for <a> inside a span
+                #     span = cell.find("span")
+                #     if span:
+                #         a_tag = span.find("a")
+                #
+                # if a_tag:
+                #     text = a_tag.get_text(strip=True)
+                #     href = a_tag.get("href")
+                # else:
+                #     text = cell.get_text(strip=True)
+                #     href = None
 
-                if a_tag:
-                    text = a_tag.get_text(strip=True)
-                    href = a_tag.get("href")
-                else:
-                    text = cell.get_text(strip=True)
-                    href = None
-
-                dataRow.append([text, href])
+                # dataRow.append([text, href])
             # if (len(dataTable) and len(dataRow) < len(dataTable[-1])):
             #     print("prev row was longer (quali) i= ", i, "url: ", url)
 
@@ -214,7 +224,7 @@ class Quali:
             # dataRow.append([cell])
             # if (len(dataRow) > 0):
             # dataTable.append(dataRow)
-            qualiPosition = QualiPosition(Driver(dataRow[1][0],dataRow[1][1]), Constructor(dataRow[2][0],dataRow[2][1]), dataRow[3][0], i)
+            qualiPosition = QualiPosition(Driver(racerName, racerURL), Constructor(constructorName, constructorURL), i, times)
 
         # returnVal = np.array(dataTable)
         print("QualiList   created for url:", url)
