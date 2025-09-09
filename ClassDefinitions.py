@@ -118,22 +118,14 @@ class Quali:
         headerRow = rows[0]
         header_cells = [cell for cell in headerRow if cell.name is not None]
         for i, th in enumerate(header_cells):
-
-
-
             if ("Gap" in th.name):
                 continue
-
             if th.has_attr("colspan"):
                 maxWidth += int(th["colspan"])
             else:
                 maxWidth += 1
-
             if th.has_attr("rowspan"):
                 headerHeight = max(int(th["rowspan"]), headerHeight)
-
-
-
         # remove the header and footer
         rows = rows[headerHeight:-1]
         # rows = rows[:-1]
@@ -180,19 +172,21 @@ class Quali:
             racerURL = ""
             constructorName = ""
             constructorURL = ""
-            gridPosition = i
+            gridPosition = i + 1
             times = []
             for j, cell in enumerate(cells):
                 # Try direct child <a> first
                 match j:
+                    case 0:
+                        continue
                     case 1:
                         # racer name
-                        racerName = cell.text
-                        racerURL = cell.href
+                        racerName = cell.find_all("a")[-1].get_text()
+                        racerURL = "https://en.wikipedia.org" + cell.find_all("a")[-1]["href"]
                     case 2:
                         # constructor name
-                        racerName = cell.text
-                        constructorURL = cell.href
+                        constructorName = cell.find_all("a")[-1].get_text()
+                        constructorURL = "https://en.wikipedia.org" + cell.find_all("a")[-1]["href"]
                     case _:
                         # else, record for fun
                         times.append(cell.text)
@@ -224,7 +218,7 @@ class Quali:
             # dataRow.append([cell])
             # if (len(dataRow) > 0):
             # dataTable.append(dataRow)
-            qualiPosition = QualiPosition(Driver(racerName, racerURL), Constructor(constructorName, constructorURL), i, times)
+            qualiList.append(QualiPosition(Driver(racerName, racerURL), Constructor(constructorName, constructorURL), gridPosition, times))
 
         # returnVal = np.array(dataTable)
         print("QualiList   created for url:", url)
