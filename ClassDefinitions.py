@@ -6,22 +6,36 @@ from numpy.typing import NDArray
 import requests
 from bs4 import BeautifulSoup
 
-class Driver:
-
-    # TODO: if an instance of driver already exists that has the same name, reuse it
-    # idk how to do that tho
-    def __init__(self, name: str):
-        self.name = name
-
+class NamedEntity:
+    _instances = {}
     name: str
+    url: str
 
-class Constructor:
-    # TODO: if an instance of constructor already exists that has the same name, reuse it
-    # idk how to do that tho
-    def __init__(self, name: str):
-        self.name = name
+    def __new__(cls, name: str, url: str):
+        if name in cls._instances:
+            return cls._instances[name]
+        instance = super().__new__(cls)
+        cls._instances[name] = instance
+        return instance
 
-    name: str
+    def __init__(self, name: str, url: str):
+        # ensure we don’t overwrite existing state if reused
+        if not hasattr(self, "_initialized"):
+            self.name = name
+            self.url = url
+            self._initialized = True
+
+    def __repr__(self) -> str:
+        pass
+
+class Driver(NamedEntity):
+    def __repr__(self):
+        return f"<Driver {self.name}>"
+
+class Constructor(NamedEntity):
+    def __repr__(self):
+        return f"<Constructor {self.name}>"
+
 
 class Position:
     def __init__(self, driver: Driver, constructor: Constructor, time: str):
@@ -56,7 +70,7 @@ class Quali:
 
     positions: List[QualiPosition]
 
-    def get_table_from_wiki_following_div(url: str, prev_div_id: str) -> NDArray:
+    def get_table_from_wiki_following_div(url: str) -> "Quali":
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                           "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -71,6 +85,7 @@ class Quali:
         soup = BeautifulSoup(resp.text, "html.parser")
 
         # Find the div containing the text prev_div
+        prev_div_id = "Qualifying"
         if ("1953_French" in url):
             prev_div_id = "Qualifying_classification"
         elif ("1950_Indianapolis" in url):
@@ -123,7 +138,8 @@ class Quali:
         # rows = rows[:-1]
 
         # extract text for each cell
-        dataTable = []
+        # dataTable = []
+        qualiList: List[QualiPosition] = []
         for i, row in enumerate(rows):
             # row = [cell for cell in row if cell.name is not None]
             # if (row.get("class") and "sortbottom" in row.get("class")):
@@ -158,14 +174,18 @@ class Quali:
                 # cells = copy.deepcopy(cells) # necessary?
                 rows[i] = newRow
 
-                # cells[1] = currCells[0]
-
-                # TODO: maybe generaly to look at prev, and for any element where rowspan!=2,
-                # then you copy it over to the current one
-
             # print("Row is >= 16 cells")
             for j, cell in enumerate(cells):
                 # Try direct child <a> first
+                # match j:
+                #     case 0:
+                #         # racing number
+                #     case 1:
+                #         # racer name
+                #     case 2:
+                #         # constructor name
+                #     case _:
+                #         # else
                 a_tag = cell.find("a", recursive=False)  # td > a
                 if a_tag is None:
                     # fallback: look for <a> inside a span
@@ -181,8 +201,8 @@ class Quali:
                     href = None
 
                 dataRow.append([text, href])
-            if (len(dataTable) and len(dataRow) < len(dataTable[-1])):
-                print("prev row was longer (quali) i= ", i, "url: ", url)
+            # if (len(dataTable) and len(dataRow) < len(dataTable[-1])):
+            #     print("prev row was longer (quali) i= ", i, "url: ", url)
 
             # print(len(dataRow))
 
@@ -193,23 +213,26 @@ class Quali:
 
             # dataRow.append([cell])
             # if (len(dataRow) > 0):
-            dataTable.append(dataRow)
+            # dataTable.append(dataRow)
+            qualiPosition = QualiPosition(Driver(dataRow[1][0],dataRow[1][1]), Constructor(dataRow[2][0],dataRow[2][1]), dataRow[3][0], i)
 
-        returnVal = np.array(dataTable)
-        print("Quali   table created for url:", url)
-        # print(returnVal)
-        return returnVal
+        # returnVal = np.array(dataTable)
+        print("QualiList   created for url:", url)
+        # # print(returnVal)
+        # return returnVal
+        return qualiList
 
     def get_quali_from_link(url: str):
-        qualiTable: NDArray = Quali.get_table_from_wiki_following_div(url, "Qualifying")
-        # print(qualiTable)
-        # TODO properly create instances of QualiPosition from the row
-        qualiList: List[QualiPosition] = []
-        for i,row in enumerate(qualiTable):
-            qualiPosition = QualiPosition(Driver(row[1][0]), Constructor(row[2][0]), row[3][0], i)
-            # TODO: need to get time or times depending on how many rounds of quali, if there even is one
-            qualiList.append(qualiPosition)
-        return Quali(qualiList)
+        # qualiTable: NDArray = Quali.get_table_from_wiki_following_div(url, "Qualifying")
+        # # print(qualiTable)
+        # # TODO properly create instances of QualiPosition from the row
+        # qualiList: List[QualiPosition] = []
+        # for i,row in enumerate(qualiTable):
+        #     qualiPosition = QualiPosition(Driver(row[1][0],row[1][1]), Constructor(row[2][0],row[2][1]), row[3][0], i)
+        #     # TODO: need to get time or times depending on how many rounds of quali, if there even is one
+        #     qualiList.append(qualiPosition)
+        # return Quali(qualiList)
+        return Quali.get_table_from_wiki_following_div(url)
         # return ClassDefinitions.Quali([]) # stub
 
 
