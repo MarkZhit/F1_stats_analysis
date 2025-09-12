@@ -107,10 +107,14 @@ class Quali:
 
         rows = table.tbody.find_all("tr")
 
-        maxWidth, headerHeight = getHeaderDimensions(rows)
+        headerHeight, maxWidth = getHeaderDimensions(rows[0])
 
         # remove the header and footer
         rows = rows[headerHeight:-1]
+        header = rows[0:headerHeight]
+        gridIndex = getGridFromHeader(header)
+        driverIndex = getDriverFromHeader(header)
+        constructorIndex = getConstructorFromHeader(header)
 
         # extract relevant text from each cell
         qualiList: List[QualiPosition] = []
@@ -156,20 +160,17 @@ class Quali:
             times = []
             for j, cell in enumerate(cells):
                 # Try direct child <a> first
-                match j:
-                    case 0:
-                        continue
-                    case 1:
-                        # racer name
-                        racerName = cell.find_all("a")[-1].get_text()
-                        racerURL = "https://en.wikipedia.org" + cell.find_all("a")[-1]["href"]
-                    case 2:
-                        # constructor name
+                if (j == driverIndex):
+                    racerName = cell.find_all("a")[-1].get_text()
+                    racerURL = "https://en.wikipedia.org" + cell.find_all("a")[-1]["href"]
+                elif (j == constructorIndex):
                         constructorName = cell.find_all("a")[-1].get_text()
                         constructorURL = "https://en.wikipedia.org" + cell.find_all("a")[-1]["href"]
-                    case _:
-                        # else, record for fun
-                        times.append(cell.text)
+                elif (j == gridIndex):
+                    continue
+                else:
+                    # else, record for fun, some are times some not
+                    times.append(cell.text)
             qualiList.append(QualiPosition(Driver(racerName, racerURL), Constructor(constructorName, constructorURL), gridPosition, times))
 
         print("QualiList   created for url:", url)
@@ -212,9 +213,10 @@ class Results:
 
         rows = table.tbody.find_all("tr")
 
-        maxWidth, headerHeight = getHeaderDimensions(rows)
+        headerHeight, maxWidth = getHeaderDimensions(rows[0])
 
         # remove the header and footer
+        rows = rows[headerHeight:-1]
         header = rows[0:headerHeight]
         gridIndex = getGridFromHeader(header)
         driverIndex = getDriverFromHeader(header)
@@ -222,7 +224,6 @@ class Results:
         lapsIndex = getLapsFromHeader(header)
         timeIndex = getTimeFromHeader(header)
         pointsIndex = getPointsFromHeader(header)
-        rows = rows[headerHeight:-1]
 
         # extract relevant text from each cell
         resultsList: List[RacePosition] = []
@@ -420,18 +421,20 @@ def getIndexFromHeader(header, str):
                 return i
 
 
-def getHeaderDimensions(rows) -> {int, int}:
+def getHeaderDimensions(headerRow) -> {int, int}:
     maxWidth = -1
     headerHeight = 1
-    headerRow = rows[0]
     header_cells = [cell for cell in headerRow if cell.name is not None]
     for i, th in enumerate(header_cells):
-        if ("Gap" in th.name):
-            continue
+        # if ("Gap" in th.name):
+        #     continue
+        # Not sure why we need this
+
         if th.has_attr("colspan"):
             maxWidth += int(th["colspan"])
         else:
             maxWidth += 1
+
         if th.has_attr("rowspan"):
             headerHeight = max(int(th["rowspan"]), headerHeight)
     return {headerHeight, maxWidth}
